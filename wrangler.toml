@@ -1,0 +1,14 @@
+name = "durable-objects-on-rust"
+main = "build/index.js"
+compatibility_date = "2026-01-09"
+
+[build]
+command = "cargo install -q worker-build@^0.7 && worker-build --release"
+
+[[durable_objects.bindings]]
+name = "MY_DO"
+class_name = "MyDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_classes = [ "MyDurableObject" ]
