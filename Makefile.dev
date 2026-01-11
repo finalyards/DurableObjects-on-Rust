@@ -1,0 +1,18 @@
+#
+# Makefile
+#
+
+all:
+	false
+
+build-dev:
+	worker-build --dev
+
+dev:
+	npx wrangler dev
+
+#--
+echo:
+	@echo ${...}
+
+.PHONY: all build-dev dev

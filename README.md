@@ -18,17 +18,62 @@ The [official Durable Objects docs](https://developers.cloudflare.com/durable-ob
 	Cloudflare's CLI tool `wrangler` is an `npm` package.
 
 
-## Preparations
-
 ### Using Multipass (optional)
 
-If you use Multipass VM, use the following commands instead of `multipass shell`, to have the port `8787` forwarded from the VM to the host:
+If you develop with Multipass VM's, there are two things to consider.
+
+#### Forward port
+
+Use this command instead of `multipass shell`, to have the worker's port forwarded:
 
 ```
 $ ./.mp.dive.sh
 ```
 
----
+>You should study the contents of that script, and edit it to your liking.
+
+#### Cache the `.wrangler` folder
+
+Running local SQLite session uses `.wrangler/state` for storage. This **does not work** if mounted to the host. 
+
+>`disk I/O error: SQLITE_IOERR`
+
+Instead, mount the whole `.wrangler` folder, within your VM, by adding this to your `/etc/fstab`:
+
+```
+/home/ubuntu/.cache/_wrangler/DurableObjects-on-Rust /home/ubuntu/DurableObjects-on-Rust/.wrangler none user,bind,noauto,exec,rw,noatime,nodiratime 0 0
+```
+
+```
+$ install -d ~/.cache/_wrangler/DurableObjects-on-Rust
+```
+
+```
+$ sudo systemctl daemon-reload
+```
+
+```
+$ mount .wrangler
+```
+
+Now, [Miniflare](https://github.com/cloudflare/workers-sdk/tree/main/packages/miniflare) is able to store SQLite database, within `.wrangler`.
+
+>[! NOTE]
+>
+>If you intend to use `npm` modules, do the same also for `node_modules`:
+>
+>```
+>/home/ubuntu/.cache/node_modules/DurableObjects-on-Rust /home/ubuntu/DurableObjects-on-Rust/node_modules none user,bind,noauto,exec,rw,noatime,nodiratime 0 0
+>```
+>
+>```
+>$ install -d ~/.cache/node-modules/DurableObjects-on-Rust
+>```
+>
+>This improves performance, notably! (10x or more)
+
+
+## Preparations
 
 ```
 $ cargo install worker-build
@@ -39,7 +84,7 @@ $ worker-build --version
 0.7.2
 ```-->
 
-This step is taken by `npx wrangler dev` but the author likes to do it explicitly, at first.
+This step is taken by `npx wrangler dev` but the author likes to do it explicitly.
 
 
 ## Steps
@@ -71,17 +116,30 @@ $ npx wrangler dev
 
 Command-double-click (macOS) on the URL. 
 
+If all went fine, you should see `OK` (or something else suitable) on the browser.
 
-**Test???**
+
+
+<!--
+**Test**
 
 *tbd.*
 
+`cargo test` or `vitest`??
+-->
+
 <!--
-## Release
+## Deploy
 
 ```
-$ worker-build --release
+$ wrangler deploy
 ```
+-->
+
+<!--
+## Observe
+
+...
 -->
 
 <!--
