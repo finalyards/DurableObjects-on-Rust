@@ -25,7 +25,6 @@ impl DurableObject for MyDurableObject {
     }
 }
 
-/***
 #[event(fetch)]
 async fn fetch(
     _req: Request,
@@ -34,4 +33,3 @@ async fn fetch(
 ) -> Result<Response> {
     Response::ok("Hello World!")
 }
-***/

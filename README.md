@@ -12,11 +12,23 @@ The [official Durable Objects docs](https://developers.cloudflare.com/durable-ob
 
 ## Requirements
 
-- `wrangler`
+- `rust` with WASM target
+- `npm` and/or `wrangler`
 
-	- ...tbd.
+	Cloudflare's CLI tool `wrangler` is an `npm` package.
+
 
 ## Preparations
+
+### Using Multipass (optional)
+
+If you use Multipass VM, use the following commands instead of `multipass shell`, to have the port `8787` forwarded from the VM to the host:
+
+```
+$ ./.mp.dive.sh
+```
+
+---
 
 ```
 $ cargo install worker-build
@@ -32,6 +44,8 @@ This step is taken by `npx wrangler dev` but the author likes to do it explicitl
 
 ## Steps
 
+Build:
+
 ```
 $ worker-build --dev
 [...]
@@ -44,10 +58,31 @@ $ worker-build --dev
 ⚡ Done in 45ms
 ```
 
+Launch locally:
+
+```
+$ npx wrangler dev
+[...]
+⎔ Starting local server...
+[wrangler:info] Ready on http://localhost:8787
+```
+
+>Note: `wrangler dev` still does a `--release` build of the WASM part.
+
+Command-double-click (macOS) on the URL. 
+
+
+**Test???**
+
+*tbd.*
+
+<!--
+## Release
+
 ```
 $ worker-build --release
 ```
-
+-->
 
 <!--
 ```
