@@ -1,8 +1,6 @@
 //use worker::{durable_object, DurableObject, State, Env, Result, Request, Response};
 use worker::*;
 
-#[cfg(feature = "_rpc_emul")]
-use serde_wasm_bindgen;
 use worker::web_sys::console;
 
 #[durable_object]
@@ -36,30 +34,19 @@ impl DurableObject for MyDurableObject {
     async fn fetch(&self, mut req: Request) -> Result<Response> {
         //let result = self.state.storage().sql("SELECT * FROM items", ()).await?;
 
-        #[cfg(false)]
+        #[cfg(true)]
         let o: RpcCall = {
             let s = req.text().await?;
-            console_debug!("TEXT: {}", s);  // "[object Object]"
-            let js = wasm_bindgen::JsValue::from_str(&s);
-            console_debug!("JS: {:?}", js);
-            serde_wasm_bindgen::from_value(js)
-                .map_err(|e| worker::Error::RustError(format!("RPC decode failed: {:?}", e)))?
+            console_debug!("TEXT: {}", s);  // "{"Abc":{"name":"xyz"}}"
+
+            serde_json::from_str(&s)?
         };
 
-        // EI toimi: '.json()' ei toimi yhdessä 'serde_wasm_bindgen':n kanssa
-        let o: RpcCall = {
-            let x = req.json().await?;
-            serde_wasm_bindgen::from_value(x)?
-        };
-
-        //console::debug_1("o: {:?}", o);
         console_log!("o: {:?}", o);
 
         match o {
             RpcCall::Abc { name } => Response::ok( self.abc(name.into()) ),
         }
-
-        //Response::ok("ok")
     }
 }
 
@@ -69,11 +56,11 @@ async fn fetch(
     env: Env,
     _ctx: Context,
 ) -> Result<Response> {
-    //let id = env.durable_object("MY_DO")?         // Rust: "creates a temporary value which is freed while still in use"
-    //    .id_from_name("abc")?;
-    let _ns = env.durable_object("MY_DO")?;     // keep accessible, so DO API doesn't have a dangling ref
-    let id = _ns.id_from_name("abc")?;
-    let stub = id.get_stub()?;  // DurableObjectStub
+    let stub = {
+        let _ns = env.durable_object("MY_DO")?;     // keep accessible, so DO API doesn't have a dangling ref
+        let id = _ns.id_from_name("abc")?;
+        id.get_stub()?
+    };
 
     // Rust RPC is not there, yet
     #[cfg(not(feature = "_rpc_emul"))]
@@ -84,20 +71,18 @@ async fn fetch(
     #[cfg(false)]
     stub.fetch_with_str("http://_/abc").await?;
 
-    //console_debug!("xxx: {:?}", "xxx");   // OK
-    console_debug!("A");
-
     #[cfg(feature = "_rpc_emul")]
     let resp = {
         let o = RpcCall::Abc { name: "xyz".into() };
         let req = {
-            let body = serde_wasm_bindgen::to_value(&o)?;   // JsValue
+            // NOTE: 'serde_wasm_bindgen' IS THE WRONG TOOL to form a request to DO. Don't. Won't work.
+            //let body = serde_wasm_bindgen::to_value(&o)?;   // JsValue
 
-            console_debug!("B {:?}", body);
+            //Rconsole_debug!("B {:?}", body);
 
             Request::new_with_init("http://_/rpc", &RequestInit {
                 method: Method::Post,
-                body: Some(body),
+                body: Some(rpc_body(&o)?.into()),
                 headers: {
                     let hh = Headers::new();
                         hh.set("content-type", "application/json")?;
@@ -112,4 +97,15 @@ async fn fetch(
     };
 
     Ok(resp)
+}
+
+use serde::Serialize;
+use wasm_bindgen::JsValue;
+use worker::Result;
+
+#[cfg(feature = "_rpc_emul")]
+pub fn rpc_body<T: Serialize>(value: &T) -> Result<JsValue> {
+    let json = serde_json::to_string(value)
+        .map_err(|e| worker::Error::RustError(format!("JSON serialization failed: {}", e)))?;
+    Ok(JsValue::from_str(&json))
 }

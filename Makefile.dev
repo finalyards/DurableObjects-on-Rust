@@ -15,4 +15,4 @@ dev:
 echo:
 	@echo ${...}
 
-.PHONY: all build-dev dev
+.PHONY: all build dev
