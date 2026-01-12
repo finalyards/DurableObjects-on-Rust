@@ -12,3 +12,4 @@ class_name = "MyDurableObject"
 [[migrations]]
 tag = "v1"
 new_classes = [ "MyDurableObject" ]
+

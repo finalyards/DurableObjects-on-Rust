@@ -75,21 +75,23 @@ Now, [Miniflare](https://github.com/cloudflare/workers-sdk/tree/main/packages/mi
 
 ## Preparations
 
+<!-- now in Cargo.toml -->
+<!--
 ```
 $ cargo install worker-build
 ```
 
-<!--```
+<!_--```
 $ worker-build --version
 0.7.2
-```-->
+```--_>
 
 This step is taken by `npx wrangler dev` but the author likes to do it explicitly.
-
+-->
 
 ## Steps
 
-Build:
+**Build**
 
 ```
 $ worker-build --dev
@@ -103,7 +105,10 @@ $ worker-build --dev
 ⚡ Done in 45ms
 ```
 
-Launch locally:
+>Note: `wrangler` commands (below) would do this step automatically, but they don't show the colors. Colors help.
+
+
+**Launch locally**
 
 ```
 $ npx wrangler dev

@@ -5,7 +5,7 @@
 all:
 	false
 
-build-dev:
+build:
 	worker-build --dev
 
 dev:
