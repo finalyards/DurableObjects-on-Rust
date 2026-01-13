@@ -13,7 +13,7 @@ The [official Durable Objects docs](https://developers.cloudflare.com/durable-ob
 ## Requirements
 
 - `rust` with WASM target
-- `npm` and/or `wrangler`
+- `npm`
 
 	Cloudflare's CLI tool `wrangler` is an `npm` package.
 
@@ -86,6 +86,9 @@ $ cargo install worker-build
 
 This step would also be taken by `wrangler dev` but the author likes to do it explicitly.
 
+```
+$ npm install
+```
 
 ## Steps
 

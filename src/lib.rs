@@ -87,18 +87,6 @@ async fn fetch(
                 })
                 .with_body(Some(rpc_body(&o)?.into()))
             )
-
-            /*** #alternatively
-            Request::new_with_init("http://_/rpc", &RequestInit {
-                method: Method::Post,
-                body: Some(rpc_body(&o)?.into()),
-                headers: {
-                    let hh = Headers::new();
-                        hh.set("content-type", "application/json")?;
-                        hh
-                },
-                ..Default::default()
-            })***/
         }?;
 
         console_debug!("C, req: {:?}", req);
