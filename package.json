@@ -1,0 +1,13 @@
+{
+  "name": "DurableObjects-on-Rust",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "worker-build --dev",
+    "dev": "wrangler dev --local",
+    "~deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.58"
+  }
+}

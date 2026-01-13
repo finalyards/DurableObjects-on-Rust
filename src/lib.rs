@@ -78,8 +78,17 @@ async fn fetch(
             // NOTE: 'serde_wasm_bindgen' IS THE WRONG TOOL to form a request to DO. Don't. Won't work.
             //let body = serde_wasm_bindgen::to_value(&o)?;   // JsValue
 
-            //Rconsole_debug!("B {:?}", body);
+            Request::new_with_init("http://_/rpc", RequestInit::new()
+                .with_method(Method::Post)
+                .with_headers({
+                    let hh = Headers::new();
+                    hh.set("content-type", "application/json")?;
+                    hh
+                })
+                .with_body(Some(rpc_body(&o)?.into()))
+            )
 
+            /*** #alternatively
             Request::new_with_init("http://_/rpc", &RequestInit {
                 method: Method::Post,
                 body: Some(rpc_body(&o)?.into()),
@@ -89,7 +98,7 @@ async fn fetch(
                         hh
                 },
                 ..Default::default()
-            })
+            })***/
         }?;
 
         console_debug!("C, req: {:?}", req);

@@ -75,26 +75,26 @@ Now, [Miniflare](https://github.com/cloudflare/workers-sdk/tree/main/packages/mi
 
 ## Preparations
 
-<!-- now in Cargo.toml -->
-<!--
 ```
 $ cargo install worker-build
 ```
 
-<!_--```
-$ worker-build --version
+>```
+>$ worker-build --version
 0.7.2
-```--_>
+>```
 
-This step is taken by `npx wrangler dev` but the author likes to do it explicitly.
--->
+This step would also be taken by `wrangler dev` but the author likes to do it explicitly.
+
 
 ## Steps
+
+We use `npm` for consolidating the development commands. This makes sense, since though most of the code is Rust, the environment it ends up running in is Node.
 
 **Build**
 
 ```
-$ worker-build --dev
+$ npm run build
 [...]
     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s
 [INFO]: ✨  Done in 1.04s
@@ -105,24 +105,27 @@ $ worker-build --dev
 ⚡ Done in 45ms
 ```
 
->Note: `wrangler` commands (below) would do this step automatically, but they don't show the colors. Colors help.
+>Note: `wrangler dev` (below) would do this step automatically, but it does not show the colors. Colors help!
 
 
 **Launch locally**
 
 ```
-$ npx wrangler dev
+$ npm run dev
 [...]
 ⎔ Starting local server...
 [wrangler:info] Ready on http://localhost:8787
 ```
 
+<!-- hidden
 >Note: `wrangler dev` still does a `--release` build of the WASM part.
+-->
 
 Command-double-click (macOS) on the URL. 
 
-If all went fine, you should see `OK` (or something else suitable) on the browser.
+If all went fine, you should see some meaningful message on the browser.
 
+- e.g. `Hey: xyz`
 
 
 <!--
