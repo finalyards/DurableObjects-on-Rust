@@ -1,16 +1,27 @@
+mod axum;
+mod weather_samples;
+
 //use worker::{durable_object, DurableObject, State, Env, Result, Request, Response};
 use worker::*;
 
 use worker::web_sys::console;
 
+
+/*** TEMP
 #[durable_object]
-pub struct MyDurableObject {
-    // tbd. own state fields here
+pub struct MyDurableObject2 {   // measurements of a certain location (e.g. "Helsinki")
+
+    // Note: We wouldn't _really_ need to keep this here, since things get persisted in the SQLite.
+    data: Vec<(u64 /*Instant*/, TemperatureC)>,
+
+    // common fields
     state: State,
     env: Env,
 }
 
-impl MyDurableObject {
+struct TemperatureC(f32);
+
+impl MyDurableObject2 {
     fn abc(&self, name: String) -> String {
         format!("Hey: {name}")
     }
@@ -24,14 +35,53 @@ enum RpcCall {
 }
 
 impl DurableObject for MyDurableObject {
-    fn new(state: State, env: Env) -> Self {
-        Self { state, env }
+    fn new(state: State, _env: Env) -> Self {
+        let sql = state.storage().sql();
+
+        // Create table if it does not exist
+        sql.exec("CREATE TABLE IF NOT EXISTS \
+            samples ( timestamp_ms INTEGER PRIMARY KEY, temp_c REAL NOT NULL );", None)
+            .expect("table created");
+
+        Self { state }  // tbd. or 'sql'
     }
 
-    // All calls come through here (no RPC in Rust, yet).
+    // The DO (inner) 'fetch'
     //
-    #[cfg(feature = "_rpc_emul")]
+    // These calls come only from the Worker. Thus, we know they are guarded.
+    //
     async fn fetch(&self, mut req: Request) -> Result<Response> {
+
+        // "/{location}
+        //
+        let p = req.path();
+        console_debug!("Path: {}", p);
+
+        match req.method() {
+            // POST to '/{location}'
+            //  - body: JSON
+            Method::Post => {
+                let location = p;
+                let body = req.body();
+
+                spawn_to(location, ); //..refined request
+            },
+
+            case Method::Get -> {
+
+            },
+
+            case _ -> {
+                error
+            }
+        }
+
+        // Jos 'POST', lisää mittaustiedot (voivat olla ei-järjestyksessä)
+        self.sql( "INSERT INTO samples (timestamp_ms, temp_c) VALUES (?, ?)", (ts_ms, temp_c), ).await?;
+
+        // Jos 'GET', palauta kaikki (aikajärjestyksessä)
+
+
         //let result = self.state.storage().sql("SELECT * FROM items", ()).await?;
 
         #[cfg(true)]
@@ -49,31 +99,63 @@ impl DurableObject for MyDurableObject {
         }
     }
 }
+***/
 
+/***RRR
+//--- tbd. outer.rs
+//
+// The Worker 'fetch'
+//
+// Check for correctness of the requests, authentication etc. - like a bouncer at a bar. Durable
+// Object 'fetch' gets passed only well-formed requests.
+//
 #[event(fetch)]
-async fn fetch(
-    _req: Request,
+async fn outer_fetch(
+    req: Request,
     env: Env,
     _ctx: Context,
 ) -> Result<Response> {
+
+    // tbd. 'get_location()'
+    let p = req.path();
+    console_debug!("Path: {}", p);
+        // "/apple-touch-icon.png" | "/apple-touch-icon-{...}.png"
+        // "/favicon.ico"
+
+
+    /*** tbd.
     let stub = {
         let _ns = env.durable_object("MY_DO")?;     // keep accessible, so DO API doesn't have a dangling ref
-        let id = _ns.id_from_name("abc")?;
+        let id = _ns.id_from_name(location)?;
         id.get_stub()?
+        ***/
+
+    let pat = Regex::new(r"^/([a-zA-Z_\-]+)$");
+    let location = pat.captures(req.path());
+
+    let (do_id, inner_req) = match (req.method(), req.path()) {
+        // POST to '/{location}'
+        //  - body: JSON
+        (Method::Post, "/{location}") => {
+            let location = p;
+            let body = req.body();
+
+            req;
+        },
+
+        // GET to '/{location}'
+        //  -> body: JSON
+        Method::Get => {
+            let location = p;
+            req
+        },
+
+        _ => {
+            return Error:: 404
+        }
     };
 
-    // Rust RPC is not there, yet
-    #[cfg(not(feature = "_rpc_emul"))]
-    let resp = stub.abc("def").await?;
-
-    // WAS: just call inner 'fetch' (no serde)
-    // Note: host (and protocol) need to be given, but are not used!!!
-    #[cfg(false)]
-    stub.fetch_with_str("http://_/abc").await?;
-
-    #[cfg(feature = "_rpc_emul")]
     let resp = {
-        let o = RpcCall::Abc { name: "xyz".into() };
         let req = {
             // NOTE: 'serde_wasm_bindgen' IS THE WRONG TOOL to form a request to DO. Don't. Won't work.
             //let body = serde_wasm_bindgen::to_value(&o)?;   // JsValue
@@ -95,14 +177,4 @@ async fn fetch(
 
     Ok(resp)
 }
-
-use serde::Serialize;
-use wasm_bindgen::JsValue;
-use worker::Result;
-
-#[cfg(feature = "_rpc_emul")]
-pub fn rpc_body<T: Serialize>(value: &T) -> Result<JsValue> {
-    let json = serde_json::to_string(value)
-        .map_err(|e| worker::Error::RustError(format!("JSON serialization failed: {}", e)))?;
-    Ok(JsValue::from_str(&json))
-}
+***/
