@@ -2,12 +2,31 @@
   "name": "DurableObjects-on-Rust",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "build": "worker-build --dev",
     "dev": "wrangler dev --local",
+    "test": "concurrently -n npm,vitest --kill-others 'npm run dev' 'vitest run'",
+    "--": "",
+    "gen-types": "wrangler types",
+    "-- -": "",
     "~deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "wrangler": "^4.59"
+    "@cloudflare/vitest-pool-workers": "^0.12.6",
+    "@types/node": "^25.0.10",
+    "concurrently": "^9.2.1",
+    "vitest": "^4.0.18",
+    "wrangler": "^4.60"
+  },
+  "//": {
+    "//scripts": {
+      "gen-types": [
+        "Run this *manually* if certain things (tbd.) change. Needed before 'npm test' since we use Typescript."
+      ]
+    }
   }
 }

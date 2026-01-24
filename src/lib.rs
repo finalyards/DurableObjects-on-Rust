@@ -1,5 +1,5 @@
-mod axum;
-mod weather_samples;
+mod outer;
+mod weather;
 
 //use worker::{durable_object, DurableObject, State, Env, Result, Request, Response};
 use worker::*;

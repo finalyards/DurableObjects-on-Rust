@@ -3,3 +3,5 @@
 /.wrangler/
 
 /Cargo.lock
+
+/worker-configuration.d.ts

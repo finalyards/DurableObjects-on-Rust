@@ -7,17 +7,18 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-axum = { version = "^0.8.8", default-features = false, features = ["http1", "json", "matched-path", "tracing"] }    # not "tokio" (which is part of default features)
+axum = { version = "^0.8.8", default-features = false, features = ["json"] } # akin to 'workers-rs' axum example
+axum-macros = "0.5.0"
 
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
+#serde_json = { version = "1.0" }
+time = { version = "0.3.46", features = ["formatting", "parsing"] }
 
-worker = { version = "^0.7.2" }
-worker-macros = { version = "^0.7.2" }
-
-[dev-dependencies]
-worker-build = { version = "0.7.2" }
+worker = { version = "^0.7.4", features = ["axum", "http"] }
+worker-macros = { version = "^0.7.4", features = ["http"] } # in 'workers-rs' 'examples/axum/Cargo.toml'; is it needed?
 
 [features]
-"_rpc_emul" = []     # marker for code that can be removed, if 'worker' allows direct RPC from Worker -> DO (does not)
-"default" = ["_rpc_emul"]
+"_hello_api" = []
+"default" = [
+    #"_hello_api"
+]
