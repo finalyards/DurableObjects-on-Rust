@@ -4,25 +4,28 @@
 use axum::{
     Router,
     //body::Body,
-    http::{Response, StatusCode},
+    http::StatusCode,
     extract::{Path, State},
     response::Json,
     routing::{get, post}
 };
 use axum_macros::debug_handler;
-//Ruse tower_service::Service;
+use tower_service::Service;     // needed for '.call()'
 
 use serde::{Serialize, Deserialize};
+//use serde_json::json;
 use time::format_description::well_known::Iso8601;
 use time::UtcDateTime::{self};
-use worker::*;
+use worker::{ Context, Env, Headers, HttpRequest, Method, Request, RequestInit, console_debug, event };
+
+use crate::weather::Sample as WeatherSample;
 
 // Router as initialized in 'worker-rs' 'examples/axum' example:
 //  -> https://github.com/cloudflare/workers-rs/blob/main/examples/axum/src/lib.rs
 //
 fn router(env: Env) -> Router {
     let r = Router::new();
-    #[cfg(feature = "_hello")]
+    #[cfg(feature = "_hello_api")]
     let r = r.route("/hello", get(hello));    // just for testing
     r
         .route("/:location", post(save_handler))
@@ -30,7 +33,7 @@ fn router(env: Env) -> Router {
         .with_state(env)
 }
 
-#[cfg(feature = "_hello")]
+#[cfg(feature = "_hello_api")]
 async fn hello() ->&'static str {
     "Hello from Worker!"
 }
@@ -38,12 +41,6 @@ async fn hello() ->&'static str {
 #[derive(Serialize, Deserialize)]
 struct Sample {
     when: String, // ISO8601
-    temperature_c: f32
-}
-
-#[derive(Serialize, Deserialize)]
-struct SampleInner {
-    when: u64,      // _secs_ since UNIX Epoch
     temperature_c: f32
 }
 
@@ -59,39 +56,48 @@ async fn save_handler(
     Path(location): Path<String>,
     State(env): State<Env>,
     Json(payload): Json<Vec<Sample>>
-) -> Result<Json<()>, StatusCode> {
+) -> Result<String, axum::http::StatusCode> {
 
-    let stub = env.durable_object("WEATHER")?
-        .id_from_name(&location)?
-        .get_stub()?;
+    let stub = env.durable_object("WEATHER")
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .id_from_name(&location)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .get_stub()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let vv: Vec<(u64, f32)> = payload.into_iter()
+    let v: Vec<WeatherSample> = payload.into_iter()
         .map(| Sample{ when, temperature_c } | {
-            let when = parse_iso8601_to_u64(&when)?;
-            Ok((when, temperature_c))
+            let when_s = parse_iso8601_to_u64(&when)
+                .map_err(|_| StatusCode::BAD_REQUEST)?;     // tbd. could tell 'when' was not ISO8601
+            Ok(WeatherSample::new(when_s, temperature_c))
         })
-        .collect::<Result<_,_>>()
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
+        .collect::<Result<_,axum::http::StatusCode>>()?;
 
+    let body = serde_json::to_string(&v).unwrap();
+
+    let mut tmp;
     let req = {
-        Request::new_with_init("http://_/save", RequestInit::new()
+        // Note: Using '.unwrap()' within here - we are not working on unexpected input.
+        //
+        tmp = RequestInit::new();
+        let tmp = tmp
             .with_method(Method::Post)
             .with_headers({
                 let hh = Headers::new();
-                hh.set("content-type", "application/json")?;
+                hh.set("content-type", "application/json").unwrap();
                 hh
             })
-            .with_body(Some(vv))
-        )
-    }?;
+            .with_body(Some(body.into()));
+
+        Request::new_with_init("http://_/save", &tmp).unwrap()
+    };
 
     console_debug!("C, req: {:?}", req);
-    let resp = stub.fetch_with_request(req).await?;
 
-    //stub.fetch_with_method_and_body("/save", "POST", vv).await
-    //    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let _resp = stub.fetch_with_request(req).await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(resp)
+    Ok("".into())
 }
 
 /*
@@ -106,48 +112,41 @@ async fn save_handler(
 async fn list_handler(
     Path(location): Path<String>,
     State(env): State<Env>
-) -> Result<Json<Vec<Sample>>, StatusCode> {
+) -> Result<Json<Vec<Sample>>, axum::http::StatusCode> {
 
-    let stub = env.durable_object("WEATHER")?
-        .id_from_name(&location)?
-        .get_stub()?;
+    let stub = env.durable_object("WEATHER")
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .id_from_name(&location)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .get_stub()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let raw: Vec<(u64, f32)> = stub.fetch("list").await
+    let mut resp = stub.fetch_with_str("/list").await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let raw: Vec<WeatherSample> = resp.json().await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let a_sorted_asc = raw.into_iter()
-        .map(|(ts, temp_c)| Sample {
-            when: format_iso8601(ts),
-            temperature_c: temp_c,
+        .map(|WeatherSample{ when: ts, temperature_c }| Sample {
+            when: to_iso8601(ts),
+            temperature_c,
         })
         .collect();
 
     Ok(Json(a_sorted_asc))
 }
 
-// The Worker 'fetch'
-//
-// We use 'axum' library for parsing the incoming requests. Check for correctness of the requests,
-// authentication etc. - like a bouncer at a bar. Durable Object 'fetch' gets passed only well-formed
-// requests.
-//
 #[event(fetch)]
-#[cfg(true)]
 async fn fetch(
     req: HttpRequest,
     env: Env,
     _ctx: Context,
-) -> Result<axum::http::Response<axum::body::Body>> {
+) -> Result<axum::http::Response<axum::body::Body>, worker::Error> {
 
-    // Run the CloudFlare request via 'axum's pipe.
+    // Spread the request via 'axum's pipe.
     //
     Ok(router(env).call(req).await?)
-}
-
-#[event(fetch)]
-#[cfg(false)]
-pub async fn main(req: Request, env: Env) -> Result<Response> {
-    router(env).run(req, env).await
 }
 
 /*
@@ -169,38 +168,3 @@ fn parse_iso8601_to_u64(s: &str) -> Result<u64, time::error::Parse> {
     let x = UtcDateTime::parse(s, &Iso8601::DEFAULT)?;
     Ok(x.unix_timestamp() as _)
 }
-
-
-
-/***R
-    /_*** tbd.
-    let stub = {
-        let _ns = env.durable_object("MY_DO")?;     // keep accessible, so DO API doesn't have a dangling ref
-        let id = _ns.id_from_name(location)?;
-        id.get_stub()?
-        ***_/
-
-    let resp = {
-        let req = {
-            // NOTE: 'serde_wasm_bindgen' IS THE WRONG TOOL to form a request to DO. Don't. Won't work.
-            //let body = serde_wasm_bindgen::to_value(&o)?;   // JsValue
-
-            Request::new_with_init("http://_/rpc", RequestInit::new()
-                .with_method(Method::Post)
-                .with_headers({
-                    let hh = Headers::new();
-                    hh.set("content-type", "application/json")?;
-                    hh
-                })
-                .with_body(Some(rpc_body(&o)?.into()))
-            )
-        }?;
-
-        console_debug!("C, req: {:?}", req);
-        stub.fetch_with_request(req).await?
-    };
-
-    Ok(resp)
-
-}
-***/

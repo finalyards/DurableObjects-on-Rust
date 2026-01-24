@@ -1,6 +1,6 @@
 //use worker::{durable_object, DurableObject, State, Env, Result, Request, Response};
 use worker::*;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 #[durable_object]
 #[derive(Clone)]
@@ -18,6 +18,8 @@ struct TemperatureC(f32);
 }***/
 
 /*** tbd. maybe???
+use serde::{Deserializer, Serializer};
+
 impl Serialize for TemperatureC {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         //serializer.serialize_newtype_struct("TemperatureC", &self.0)
@@ -38,9 +40,13 @@ impl<'de> Deserialize<'de> for TemperatureC {
 //
 // tbd. API classes to their own mod
 #[derive(Deserialize, Serialize)]
-struct Sample {
-    when: u64,            // outer 'fetch' converts ISO8601 <-> u64
-    temperature_c: f32,
+pub(crate) struct Sample {
+    pub(crate) when: u64,            // outer 'fetch' converts ISO8601 <-> u64
+    pub(crate) temperature_c: f32,
+}
+
+impl Sample {
+    pub(crate) fn new(when: u64, temperature_c: f32) -> Self { Self { when, temperature_c } }
 }
 
 impl Weather {
