@@ -24,6 +24,7 @@ The [official Durable Objects docs](https://developers.cloudflare.com/durable-ob
 
 If you develop with Multipass VM's, there are two things to consider.
 
+<!-- not needed, if only APIs exposed; tests work!
 #### Forward port
 
 Use this command instead of `multipass shell`, to have the worker's port forwarded:
@@ -33,6 +34,7 @@ $ ./.mp.dive.sh
 ```
 
 >You should study the contents of that script, and edit it to your liking.
+-->
 
 #### Cache the `.wrangler` folder
 
@@ -98,7 +100,7 @@ $ cargo install worker-build
 
 >```
 >$ worker-build --version
-0.7.2
+0.7.4
 >```
 
 This step would also be taken by `wrangler dev` but the author likes to do it explicitly.
